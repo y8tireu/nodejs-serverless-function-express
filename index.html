@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Downloader</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 50px;
+      text-align: center;
+      background-color: #121212;
+      color: #ffffff;
+    }
+    h1 {
+      color: #00ffcc;
+    }
+    p {
+      color: #bbbbbb;
+    }
+    form {
+      margin-top: 20px;
+      background-color: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    input[type="text"] {
+      width: 300px;
+      padding: 10px;
+      margin: 10px;
+      border: 1px solid #444;
+      border-radius: 5px;
+      background-color: #2b2b2b;
+      color: #ffffff;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background-color: #00ffcc;
+      color: #121212;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #009977;
+    }
+  </style>
+</head>
+<body>
+  <h1>Custom File Downloader</h1>
+  <p>Enter the file URL and desired name to download the file.</p>
+  <form id="downloadForm">
+    <input type="text" id="fileUrl" placeholder="Enter file URL" required><br>
+    <input type="text" id="fileName" placeholder="Enter file name with extension" required><br>
+    <button type="submit">Download File</button>
+  </form>
+
+  <script>
+    document.getElementById('downloadForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const fileUrl = document.getElementById('fileUrl').value;
+      const fileName = document.getElementById('fileName').value;
+
+      // Redirect to server with query parameters for URL and filename
+      const downloadLink = `/download?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(fileName)}`;
+      window.location.href = downloadLink;
+    });
+  </script>
+
+  <script>
+    const https = require('https');
+    const http = require('http');
+    const url = require('url');
+
+    http.createServer((req, res) => {
+      if (req.url.startsWith('/download')) {
+        const query = new URL(req.url, `http://${req.headers.host}`).searchParams;
+        const fileUrl = query.get('url');
+        const fileName = query.get('filename') || 'downloaded_file';
+
+        if (fileUrl) {
+          https.get(fileUrl, (response) => {
+            if (response.statusCode === 200) {
+              // Set headers to force file download
+              res.writeHead(200, {
+                'Content-Disposition': `attachment; filename="${fileName}"`,
+                'Content-Type': response.headers['content-type'] || 'application/octet-stream',
+              });
+
+              // Pipe the response from the external URL to the user
+              response.pipe(res);
+            } else {
+              res.writeHead(response.statusCode, { 'Content-Type': 'text/plain' });
+              res.end(`Failed to fetch file: ${response.statusCode}`);
+            }
+          }).on('error', (err) => {
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end(`Error: ${err.message}`);
+          });
+        } else {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          res.end('Bad Request: Missing file URL');
+        }
+      } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
+      }
+    }).listen(3000, () => {
+      console.log('Server is running on http://localhost:3000');
+    });
+  </script>
+</body>
+</html>
+
